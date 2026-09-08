@@ -62,11 +62,19 @@ namespace TldJump
 
             _cfg = MelonPreferences.CreateCategory("TLDJump", "TLD Jump");
             _enabled = _cfg.CreateEntry("Enabled", true, description: "Master switch.");
-            _key = _cfg.CreateEntry("Key", "Space",
-                description: "The jump key. Space is the natural one and it is the default, but The "
-                    + "Long Dark has historically used Space for its context menu - if pressing it "
-                    + "opens something as well as jumping, rebind to V here. The game does not check "
-                    + "modifiers, so Ctrl and Space would not help.");
+            // V RATHER THAN SPACE, AND IT IS NOT A PREFERENCE.
+            //
+            // Space is the natural jump key and it is the wrong default here: The Long Dark uses it
+            // for its context menu, so the key that jumps would also open something every time. The
+            // game does not check modifiers either - that was established when three of another
+            // mod's hotkeys turned out to be the game's own screenshot keys and Ctrl made no
+            // difference - so Ctrl and Space would not have rescued it.
+            //
+            // Better a key that is only ours than a key that is nearly right.
+            _key = _cfg.CreateEntry("Key", "V",
+                description: "The jump key. NOT Space: the game uses that for its context menu, and "
+                    + "it does not check modifiers, so Ctrl and Space would not help either. Any "
+                    + "Unity key name works here if V is wanted for something else.");
             _force = _cfg.CreateEntry("JumpForce", 0.14f,
                 description: "How hard the jump pushes, in the controller's own units. The game's "
                     + "walking acceleration is around 0.03 for scale. Raise it a little at a time: "
@@ -111,8 +119,8 @@ namespace TldJump
             try { key = (KeyCode)System.Enum.Parse(typeof(KeyCode), _key.Value.Trim(), true); }
             catch (System.Exception)
             {
-                key = KeyCode.Space;
-                Once("bad-key", "'" + _key.Value + "' is not a Unity key name - using Space.");
+                key = KeyCode.V;
+                Once("bad-key", "'" + _key.Value + "' is not a Unity key name - using V.");
             }
 
             bool pressed;

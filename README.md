@@ -2,7 +2,7 @@
 
 **A jump for The Long Dark, using the jump the game already has.**
 
-MelonLoader mod. Press the key, the character jumps. Default key is `Space`.
+MelonLoader mod. Press the key, the character jumps. Default key is `V`.
 
 ## Why this can work at all
 
@@ -44,14 +44,14 @@ One press answers all of it.
 
 | Setting | Does | Default |
 |---|---|---|
-| `Key` | The jump key. | `Space` |
+| `Key` | The jump key. | `V` |
 | `JumpForce` | How hard the push is, in the controller's units. Walking acceleration is about 0.03 for scale. | `0.14` |
 | `UseOwnForce` | Write `JumpForce` into the controller before jumping, because the game's own is likely zero. | on |
 | `CooldownSeconds` | Least time between jumps, so a held key is not a hover. | `0.35` |
 | `RequireGround` | Only jump with ground underfoot. | on |
 | `ReportHeight` | Log how high each jump actually went. | on |
 
-**A note on the key.** The Long Dark has historically used `Space` for its context menu. If pressing
+**A note on the key.** `Space` would be the natural jump key and is deliberately NOT the default: The Long Dark uses it for its context menu, so it would open something on every jump. If
 it opens something as well as jumping, rebind to `V`. Modifiers do not help - the game does not
 check them, which was established the hard way when three of another mod's hotkeys turned out to be
 the game's screenshot keys.
