@@ -89,18 +89,22 @@ namespace TldJump
             //     force 0.50  ->  1.77m and 1.77m
             //     force 0.70  ->  1.77m and 1.77m      identical, so the controller clamps here
             //
-            // 0.50 is the default because it is the most the engine will give: above it the number
-            // changes and the jump does not. Anyone raising this past 0.5 is spending force on
-            // nothing, which is worth knowing before spending an evening on it.
-            _force = _cfg.CreateEntry("JumpForce", 0.50f,
-                description: "How hard the jump pushes, in the controller's own units. 0.50 lifts "
-                    + "about 1.77m, which is where the controller clamps - measured, and identical "
-                    + "at 0.70, so there is nothing above this to reach for. The game's own value is "
-                    + "0.25 and lifts about a metre; walking acceleration is around 0.03 for scale.");
+            // 0.25 is the default, and it is the game's own number rather than a chosen one. The
+            // ladder above was climbed to find the ceiling, and the ceiling turned out to be the
+            // wrong thing to want: 1.77m clears a cabin roof and reads as a cheat. A metre reads as
+            // a person jumping, which is the whole point of a mod that only wants what the game
+            // already had. The higher values remain one keypress away for anyone who disagrees.
+            _force = _cfg.CreateEntry("JumpForce", 0.25f,
+                description: "How hard the jump pushes, in the controller's own units. 0.25 is the "
+                    + "game's own value and lifts about a metre, which is a person jumping. 0.35 "
+                    + "lifts 1.55m and 0.50 lifts 1.77m, where the controller clamps - measured, and "
+                    + "identical at 0.70, so there is nothing above 0.50 to reach for. Walking "
+                    + "acceleration is around 0.03 for scale.");
             _useOwnForce = _cfg.CreateEntry("UseOwnForce", true,
-                description: "Write JumpForce into the controller instead of using the game's own "
-                    + "0.25. On, because 0.25 lifts a metre and 0.50 lifts the full 1.77m the engine "
-                    + "allows. Turn it off for the jump exactly as Hinterland tuned it.");
+                description: "Write JumpForce into the controller rather than leaving whatever the "
+                    + "game has. On, so the number in this file is the number in play - the two "
+                    + "happen to agree at the default, and stop agreeing the moment the force keys "
+                    + "are used.");
             _cooldown = _cfg.CreateEntry("CooldownSeconds", 0.35f,
                 description: "Least time between jumps. Stops a held key turning into a hover.");
             _requireGround = _cfg.CreateEntry("RequireGround", true,
