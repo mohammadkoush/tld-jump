@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    tld-jump - The Long Dark, MelonLoader 0.7.3, Unity 6000.0.60f1, IL2CPP.
+
+    Same build shape as ld-pickup-doctor: references come straight from the game install, so the
+    build always matches the installed version, and the interop assemblies are the ones MelonLoader
+    generates on its first successful launch.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>tld-jump</AssemblyName>
+    <RootNamespace>TldJump</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DebugType>none</DebugType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <NoWarn>$(NoWarn);CS0649;CS0169;CS8632;MSB3277</NoWarn>
+    <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\TheLongDark</GameDir>
+    <MlDir>$(GameDir)\MelonLoader</MlDir>
+    <InteropDir>$(MlDir)\Il2CppAssemblies</InteropDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="src\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="MelonLoader">
+      <HintPath>$(MlDir)\net6\MelonLoader.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(MlDir)\net6\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>$(MlDir)\net6\Il2CppInterop.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Common">
+      <HintPath>$(MlDir)\net6\Il2CppInterop.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="ReferenceInterop" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <InteropAssembly Include="$(InteropDir)\*.dll" />
+      <ReferencePath Include="@(InteropAssembly)">
+        <Private>false</Private>
+      </ReferencePath>
+    </ItemGroup>
+    <Error Condition="'@(InteropAssembly)' == ''"
+           Text="No interop assemblies in $(InteropDir). The game has not yet run with MelonLoader loaded." />
+  </Target>
+
+</Project>
