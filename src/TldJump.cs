@@ -129,6 +129,7 @@ namespace TldJump
             }
 
             KeyProbe();
+            TriggerFile();
 
             bool pressed;
             try { pressed = Input.GetKeyDown(key); }
@@ -241,6 +242,52 @@ namespace TldJump
                 _controller = null;
                 Once("jump-threw", "jump: the call threw: " + e.Message
                     + " - the controller is looked up again on the next press.");
+            }
+        }
+
+        // ------------------------------------------------------------------------------------------
+        // A JUMP THAT NEEDS NO KEYBOARD
+        //
+        // Testing over a remote desktop from a phone puts a keyboard, an Android IME, a remote
+        // session and a game between the intent and the code. When nothing happens, any one of those
+        // four could be the reason, and the log cannot tell them apart.
+        //
+        // So the jump can also be asked for by a FILE. Create the file, and the next frame jumps and
+        // deletes it. That removes every layer except the game itself: if a jump happens this way but
+        // not on a key, the jump works and the keyboard is the problem; if it does not happen either
+        // way, the keyboard was never the question.
+        //
+        // The file lives in the game folder rather than anywhere clever, so it can be made from a
+        // terminal on the same machine with one command.
+        private static string _triggerPath;
+        private static float _nextTriggerCheck;
+
+        private void TriggerFile()
+        {
+            float now = Time.realtimeSinceStartup;
+            if (now < _nextTriggerCheck) return;
+            _nextTriggerCheck = now + 0.2f;
+
+            try
+            {
+                if (_triggerPath == null)
+                {
+                    _triggerPath = System.IO.Path.Combine(
+                        System.IO.Directory.GetCurrentDirectory(), "jump-now.txt");
+                    _log.Msg("a jump can also be asked for without any keyboard: create the file "
+                        + _triggerPath + " and it jumps on the next frame.");
+                }
+
+                if (!System.IO.File.Exists(_triggerPath)) return;
+
+                try { System.IO.File.Delete(_triggerPath); } catch (System.Exception) { }
+                _log.Msg("jump asked for by file rather than by key.");
+                TryJump();
+            }
+            catch (System.Exception e)
+            {
+                Once("trigger", "the jump trigger file could not be checked: " + e.Message
+                    + " - the key still works.");
             }
         }
 
