@@ -42,6 +42,7 @@ namespace TldJump
         private static MelonPreferences_Entry<float> _cooldown;
         private static MelonPreferences_Entry<bool> _requireGround;
         private static MelonPreferences_Entry<bool> _report;
+        private static MelonPreferences_Entry<bool> _probe;
 
         private vp_FPSController _controller;
         private float _lastJump = -99f;
@@ -93,6 +94,10 @@ namespace TldJump
             _report = _cfg.CreateEntry("ReportHeight", true,
                 description: "Log how high each jump actually went. It is how you tell a working "
                     + "jump from one that lifts four centimetres.");
+            _probe = _cfg.CreateEntry("Probe", true,
+                description: "Report the first twelve key presses the mod sees, whatever they are. "
+                    + "It exists to answer one question that a jump log cannot: whether the keyboard "
+                    + "reaches the mod at all. Turn it off once that is settled.");
             MelonPreferences.Save();
 
             _log.Msg("TLD Jump 0.1.0 ready. Press " + _key.Value + " to jump.");
@@ -122,6 +127,8 @@ namespace TldJump
                 key = KeyCode.V;
                 Once("bad-key", "'" + _key.Value + "' is not a Unity key name - using V.");
             }
+
+            KeyProbe();
 
             bool pressed;
             try { pressed = Input.GetKeyDown(key); }
@@ -234,6 +241,56 @@ namespace TldJump
                 _controller = null;
                 Once("jump-threw", "jump: the call threw: " + e.Message
                     + " - the controller is looked up again on the next press.");
+            }
+        }
+
+        // ------------------------------------------------------------------------------------------
+        // DOES THE MOD SEE THE KEYBOARD AT ALL?
+        //
+        // "I tried V, nothing came of it" - and the log carried no jump line of any kind. Not a
+        // refusal, not a failed jump: nothing. So the question is not whether the jump works, it is
+        // whether the key press ever arrived, and those are answered in different places.
+        //
+        // This says so directly. It reports the first few keys the mod sees, whatever they are. If
+        // pressing V produces a line here, the keyboard reaches us and the fault is further in. If
+        // pressing anything at all produces nothing, the mod is not being given keys - which points
+        // at how the session is being driven rather than at this code.
+        private static int _keysSeen;
+        private static float _nextKeyLine;
+
+        private void KeyProbe()
+        {
+            if (!_probe.Value || _keysSeen >= 12) return;
+            try
+            {
+                if (!Input.anyKeyDown) return;
+                float now = Time.realtimeSinceStartup;
+                if (now < _nextKeyLine) return;
+                _nextKeyLine = now + 0.2f;
+
+                string typed = Input.inputString;
+                string named = "";
+                // A short list rather than all four hundred KeyCodes: the letters and the keys this
+                // mod or its sibling might use. Naming one is enough to prove the keyboard arrives.
+                KeyCode[] look = new KeyCode[]
+                {
+                    KeyCode.V, KeyCode.Space, KeyCode.W, KeyCode.A, KeyCode.S, KeyCode.D,
+                    KeyCode.Insert, KeyCode.Home, KeyCode.End, KeyCode.Delete,
+                    KeyCode.PageUp, KeyCode.PageDown, KeyCode.Tab, KeyCode.LeftShift,
+                    KeyCode.LeftControl, KeyCode.F7, KeyCode.F11
+                };
+                for (int i = 0; i < look.Length; i++)
+                    if (Input.GetKey(look[i])) named += (named.Length > 0 ? "+" : "") + look[i];
+
+                _keysSeen++;
+                _log.Msg("key probe " + _keysSeen + "/12: the mod sees a key down"
+                    + (named.Length > 0 ? " (" + named + ")" : " (not one of the ones it names)")
+                    + (string.IsNullOrEmpty(typed) ? "" : ", typed '" + typed.Trim() + "'")
+                    + ". Set Probe=false in the config to stop these.");
+            }
+            catch (System.Exception e)
+            {
+                Once("probe", "the key probe threw: " + e.Message);
             }
         }
 
