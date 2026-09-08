@@ -43,6 +43,9 @@ namespace TldJump
         private static MelonPreferences_Entry<bool> _requireGround;
         private static MelonPreferences_Entry<bool> _report;
         private static MelonPreferences_Entry<bool> _probe;
+        private static MelonPreferences_Entry<string> _keyUp;
+        private static MelonPreferences_Entry<string> _keyDown;
+        private static MelonPreferences_Entry<float> _step;
 
         private vp_FPSController _controller;
         private float _lastJump = -99f;
@@ -74,10 +77,11 @@ namespace TldJump
             // difference - so Ctrl and Space would not have rescued it.
             //
             // Better a key that is only ours than a key that is nearly right.
-            _key = _cfg.CreateEntry("Key", "V",
-                description: "The jump key. NOT Space: the game uses that for its context menu, and "
-                    + "it does not check modifiers, so Ctrl and Space would not help either. Any "
-                    + "Unity key name works here if V is wanted for something else.");
+            _key = _cfg.CreateEntry("Key", "Space",
+                description: "The jump key. Space, because that is what a jump key is and it is what "
+                    + "an on-screen keyboard offers first. The game has historically used Space for "
+                    + "its context menu, so if something opens as well as jumping, set this to V - "
+                    + "modifiers will not help, the game does not check them.");
             // MEASURED, twice, three seconds apart and repeatable to a centimetre:
             //
             //     force 0.25  ->  1.00m and 0.99m      the game's own value
@@ -105,6 +109,16 @@ namespace TldJump
             _report = _cfg.CreateEntry("ReportHeight", true,
                 description: "Log how high each jump actually went. It is how you tell a working "
                     + "jump from one that lifts four centimetres.");
+            _keyUp = _cfg.CreateEntry("KeyForceUp", "KeypadPlus",
+                description: "Raise the jump force by ForceStep. On the numeric keypad by default, "
+                    + "because the game claims the function row and the main row is mostly gameplay. "
+                    + "Any Unity key name works.");
+            _keyDown = _cfg.CreateEntry("KeyForceDown", "KeypadMinus",
+                description: "Lower the jump force by ForceStep.");
+            _step = _cfg.CreateEntry("ForceStep", 0.05f,
+                description: "How much the two keys move the force per press. The useful range is "
+                    + "narrow - 0.25 lifts a metre and 0.50 lifts the 1.77m ceiling - so the step is "
+                    + "small on purpose.");
             _probe = _cfg.CreateEntry("Probe", true,
                 description: "Report the first twelve key presses the mod sees, whatever they are. "
                     + "It exists to answer one question that a jump log cannot: whether the keyboard "
@@ -135,12 +149,13 @@ namespace TldJump
             try { key = (KeyCode)System.Enum.Parse(typeof(KeyCode), _key.Value.Trim(), true); }
             catch (System.Exception)
             {
-                key = KeyCode.V;
-                Once("bad-key", "'" + _key.Value + "' is not a Unity key name - using V.");
+                key = KeyCode.Space;
+                Once("bad-key", "'" + _key.Value + "' is not a Unity key name - using Space.");
             }
 
             KeyProbe();
             TriggerFile();
+            ForceKeys();
 
             bool pressed;
             try { pressed = Input.GetKeyDown(key); }
@@ -153,6 +168,76 @@ namespace TldJump
             if (!pressed) return;
 
             TryJump();
+        }
+
+        // ------------------------------------------------------------------------------------------
+        // TUNING IT WHILE LOOKING AT IT
+        //
+        // The force was found by firing a ladder from outside the game and reading heights out of a
+        // log. That worked, and it is not something anybody else can do. A number that can only be
+        // changed by editing a file and restarting stays at whatever it was first set to.
+        //
+        // So two keys move it, the new value is announced ON SCREEN rather than only in the log, and
+        // it is saved immediately - the next launch starts where the last one ended.
+        private static float _shownUntil;
+        private static string _shownText = "";
+
+        private void ForceKeys()
+        {
+            try
+            {
+                if (Down(_keyUp, KeyCode.KeypadPlus)) NudgeForce(1);
+                else if (Down(_keyDown, KeyCode.KeypadMinus)) NudgeForce(-1);
+            }
+            catch (System.Exception e)
+            {
+                Once("forcekeys", "the force keys could not be read: " + e.Message);
+            }
+        }
+
+        private static bool Down(MelonPreferences_Entry<string> entry, KeyCode fallback)
+        {
+            KeyCode k;
+            try { k = (KeyCode)System.Enum.Parse(typeof(KeyCode), entry.Value.Trim(), true); }
+            catch (System.Exception) { k = fallback; }
+            return Input.GetKeyDown(k);
+        }
+
+        private void NudgeForce(int direction)
+        {
+            // Clamped at 0.50 on the way up because that is where the controller stops caring -
+            // measured at 0.50 and at 0.70, both giving an identical 1.77m. A dial that keeps moving
+            // after the thing it controls has stopped is a dial that lies.
+            float step = Mathf.Max(0.01f, _step.Value);
+            float now = Mathf.Clamp(_force.Value + direction * step, 0.05f, 0.50f);
+
+            _force.Value = now;
+            _useOwnForce.Value = true;
+            MelonPreferences.Save();
+
+            string note = now >= 0.4999f
+                ? "  (the ceiling - about 1.77m, and more force changes nothing)"
+                : (now <= 0.0501f ? "  (the floor)" : "");
+            _shownText = "jump force " + now.ToString("0.00") + note;
+            _shownUntil = Time.realtimeSinceStartup + 2.5f;
+            _log.Msg("jump force " + now.ToString("0.00") + note);
+        }
+
+        public override void OnGUI()
+        {
+            if (Time.realtimeSinceStartup > _shownUntil || _shownText.Length == 0) return;
+            try
+            {
+                float w = 360f;
+                Rect r = new Rect((Screen.width - w) * 0.5f, 60f, w, 26f);
+                Color was = GUI.color;
+                GUI.color = new Color(0f, 0f, 0f, 0.65f);
+                GUI.Box(r, "");
+                GUI.color = new Color(1f, 0.85f, 0.5f, 1f);
+                GUI.Label(new Rect(r.x + 10f, r.y + 4f, r.width - 20f, 20f), _shownText);
+                GUI.color = was;
+            }
+            catch (System.Exception) { }
         }
 
         /// <summary>
