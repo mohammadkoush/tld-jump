@@ -76,16 +76,17 @@ namespace TldJump
                 description: "The jump key. NOT Space: the game uses that for its context menu, and "
                     + "it does not check modifiers, so Ctrl and Space would not help either. Any "
                     + "Unity key name works here if V is wanted for something else.");
-            _force = _cfg.CreateEntry("JumpForce", 0.14f,
-                description: "How hard the jump pushes, in the controller's own units. The game's "
+            _force = _cfg.CreateEntry("JumpForce", 0.25f,
+                description: "How hard the jump pushes, in the controller own units. MEASURED: the "
                     + "walking acceleration is around 0.03 for scale. Raise it a little at a time: "
                     + "this is a real physics push, and a big number sends the character over the "
                     + "roof rather than onto it.");
-            _useOwnForce = _cfg.CreateEntry("UseOwnForce", true,
-                description: "Write JumpForce into the controller before jumping. On, because the "
-                    + "game ships with its jump force at zero - which is almost certainly HOW "
-                    + "jumping was removed - and calling the jump with a zero force does nothing at "
-                    + "all. Turn it off to use whatever the game itself has.");
+            _useOwnForce = _cfg.CreateEntry("UseOwnForce", false,
+                description: "Write JumpForce into the controller instead of using the game's own. "
+                    + "OFF by default, because the guess behind turning it on was wrong: the game's "
+                    + "jump force is not zero, it is 0.25 - a real, tuned value. Jumping was removed "
+                    + "by never binding a key, not by disabling the physics. Turn this on only to "
+                    + "deliberately jump higher or lower than the game intended.");
             _cooldown = _cfg.CreateEntry("CooldownSeconds", 0.35f,
                 description: "Least time between jumps. Stops a held key turning into a hover.");
             _requireGround = _cfg.CreateEntry("RequireGround", true,
@@ -302,6 +303,7 @@ namespace TldJump
         // pressing V produces a line here, the keyboard reaches us and the fault is further in. If
         // pressing anything at all produces nothing, the mod is not being given keys - which points
         // at how the session is being driven rather than at this code.
+        private static KeyCode[] _allKeys;
         private static int _keysSeen;
         private static float _nextKeyLine;
 
@@ -317,21 +319,32 @@ namespace TldJump
 
                 string typed = Input.inputString;
                 string named = "";
-                // A short list rather than all four hundred KeyCodes: the letters and the keys this
-                // mod or its sibling might use. Naming one is enough to prove the keyboard arrives.
-                KeyCode[] look = new KeyCode[]
+                bool mouse = false;
+
+                // EVERY KeyCode, not a shortlist. The shortlist version reported "a key down, not
+                // one of the ones it names" nine times, which is the least useful sentence a probe
+                // can produce: it proves something arrived and refuses to say what. The enum is
+                // walked once and cached, so the cost is a loop over an array rather than any
+                // reflection per frame.
+                if (_allKeys == null)
                 {
-                    KeyCode.V, KeyCode.Space, KeyCode.W, KeyCode.A, KeyCode.S, KeyCode.D,
-                    KeyCode.Insert, KeyCode.Home, KeyCode.End, KeyCode.Delete,
-                    KeyCode.PageUp, KeyCode.PageDown, KeyCode.Tab, KeyCode.LeftShift,
-                    KeyCode.LeftControl, KeyCode.F7, KeyCode.F11
-                };
-                for (int i = 0; i < look.Length; i++)
-                    if (Input.GetKey(look[i])) named += (named.Length > 0 ? "+" : "") + look[i];
+                    System.Array values = System.Enum.GetValues(typeof(KeyCode));
+                    _allKeys = new KeyCode[values.Length];
+                    for (int i = 0; i < values.Length; i++) _allKeys[i] = (KeyCode)values.GetValue(i);
+                }
+
+                for (int i = 0; i < _allKeys.Length; i++)
+                {
+                    KeyCode k = _allKeys[i];
+                    if (!Input.GetKey(k)) continue;
+                    if (k >= KeyCode.Mouse0 && k <= KeyCode.Mouse6) mouse = true;
+                    if (named.Length < 60) named += (named.Length > 0 ? "+" : "") + k;
+                }
 
                 _keysSeen++;
-                _log.Msg("key probe " + _keysSeen + "/12: the mod sees a key down"
-                    + (named.Length > 0 ? " (" + named + ")" : " (not one of the ones it names)")
+                _log.Msg("key probe " + _keysSeen + "/12: "
+                    + (named.Length > 0 ? named : "something was down but nothing reads as held")
+                    + (mouse ? "  <- that is a MOUSE button, not a key" : "")
                     + (string.IsNullOrEmpty(typed) ? "" : ", typed '" + typed.Trim() + "'")
                     + ". Set Probe=false in the config to stop these.");
             }
