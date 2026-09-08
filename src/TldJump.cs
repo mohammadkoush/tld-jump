@@ -78,17 +78,25 @@ namespace TldJump
                 description: "The jump key. NOT Space: the game uses that for its context menu, and "
                     + "it does not check modifiers, so Ctrl and Space would not help either. Any "
                     + "Unity key name works here if V is wanted for something else.");
-            _force = _cfg.CreateEntry("JumpForce", 0.25f,
-                description: "How hard the jump pushes, in the controller own units. MEASURED: the "
-                    + "walking acceleration is around 0.03 for scale. Raise it a little at a time: "
-                    + "this is a real physics push, and a big number sends the character over the "
-                    + "roof rather than onto it.");
-            _useOwnForce = _cfg.CreateEntry("UseOwnForce", false,
-                description: "Write JumpForce into the controller instead of using the game's own. "
-                    + "OFF by default, because the guess behind turning it on was wrong: the game's "
-                    + "jump force is not zero, it is 0.25 - a real, tuned value. Jumping was removed "
-                    + "by never binding a key, not by disabling the physics. Turn this on only to "
-                    + "deliberately jump higher or lower than the game intended.");
+            // MEASURED, twice, three seconds apart and repeatable to a centimetre:
+            //
+            //     force 0.25  ->  1.00m and 0.99m      the game's own value
+            //     force 0.35  ->  1.55m and 1.54m
+            //     force 0.50  ->  1.77m and 1.77m
+            //     force 0.70  ->  1.77m and 1.77m      identical, so the controller clamps here
+            //
+            // 0.50 is the default because it is the most the engine will give: above it the number
+            // changes and the jump does not. Anyone raising this past 0.5 is spending force on
+            // nothing, which is worth knowing before spending an evening on it.
+            _force = _cfg.CreateEntry("JumpForce", 0.50f,
+                description: "How hard the jump pushes, in the controller's own units. 0.50 lifts "
+                    + "about 1.77m, which is where the controller clamps - measured, and identical "
+                    + "at 0.70, so there is nothing above this to reach for. The game's own value is "
+                    + "0.25 and lifts about a metre; walking acceleration is around 0.03 for scale.");
+            _useOwnForce = _cfg.CreateEntry("UseOwnForce", true,
+                description: "Write JumpForce into the controller instead of using the game's own "
+                    + "0.25. On, because 0.25 lifts a metre and 0.50 lifts the full 1.77m the engine "
+                    + "allows. Turn it off for the jump exactly as Hinterland tuned it.");
             _cooldown = _cfg.CreateEntry("CooldownSeconds", 0.35f,
                 description: "Least time between jumps. Stops a held key turning into a hover.");
             _requireGround = _cfg.CreateEntry("RequireGround", true,
