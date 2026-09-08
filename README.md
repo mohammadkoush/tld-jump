@@ -51,10 +51,12 @@ One press answers all of it.
 | `RequireGround` | Only jump with ground underfoot. | on |
 | `ReportHeight` | Log how high each jump actually went. | on |
 
-**A note on the key.** `Space` would be the natural jump key and is deliberately NOT the default: The Long Dark uses it for its context menu, so it would open something on every jump. If
-it opens something as well as jumping, rebind to `V`. Modifiers do not help - the game does not
-check them, which was established the hard way when three of another mod's hotkeys turned out to be
-the game's screenshot keys.
+**A note on the key.** `Space` would be the natural jump key and is deliberately NOT the default:
+The Long Dark uses it for its context menu, so the key that jumps would also open something every
+time. Modifiers do not rescue it either - the game does not check them, which was established the
+hard way when three of another mod's hotkeys turned out to be the game's own screenshot keys and
+holding Ctrl made no difference at all. Better a key that is only ours than one that is nearly
+right, so the default is `V`, and any Unity key name can be set instead.
 
 ## Building
 
