@@ -48,6 +48,8 @@ namespace TldJump
         private float _lastJump = -99f;
         private bool _haveOriginalForce;
         private float _originalForce;
+        private static float _oneOffForce = -1f;
+        private static float _lastForceUsed;
 
         // Measurement, in the house style: how high the last jump actually went. A jump that "works"
         // and lifts four centimetres is a jump that does not work, and only a number can tell them
@@ -195,19 +197,24 @@ namespace TldJump
                     return;
                 }
 
-                if (_useOwnForce.Value)
+                if (!_haveOriginalForce)
                 {
-                    if (!_haveOriginalForce)
-                    {
-                        _originalForce = _controller.MotorJumpForce;
-                        _haveOriginalForce = true;
-                        _log.Msg("jump: the game's own jump force is " + _originalForce.ToString("0.0000")
-                            + (_originalForce <= 0.0001f
-                                ? " - zero, which is how jumping was taken out. Using JumpForce instead."
-                                : " - overriding it with JumpForce."));
-                    }
-                    _controller.MotorJumpForce = Mathf.Max(0.001f, _force.Value);
+                    _originalForce = _controller.MotorJumpForce;
+                    _haveOriginalForce = true;
+                    _log.Msg("jump: the game's own jump force is " + _originalForce.ToString("0.0000")
+                        + (_originalForce <= 0.0001f
+                            ? " - zero, which would be how jumping was taken out."
+                            : " - a real tuned value, so jumping was removed by never binding a key."));
                 }
+
+                // A force from the trigger file wins, then the setting, then the game's own. The
+                // one-off exists so a value can be tried without a restart; nothing about it is
+                // remembered, so the next jump is back to normal unless it is asked for again.
+                float useForce = _oneOffForce > 0f
+                    ? _oneOffForce
+                    : (_useOwnForce.Value ? Mathf.Max(0.001f, _force.Value) : _originalForce);
+                _controller.MotorJumpForce = useForce;
+                _lastForceUsed = useForce;
 
                 float yBefore = 0f;
                 Transform t = GameManager.GetPlayerTransform();
@@ -281,9 +288,35 @@ namespace TldJump
 
                 if (!System.IO.File.Exists(_triggerPath)) return;
 
+                // THE FILE CAN CARRY A FORCE, and that is what makes tuning possible at all from
+                // outside the game. Restarting once per guess is how a number like this never gets
+                // found: each restart costs a minute, so three guesses cost the afternoon and the
+                // person tuning gives up at "good enough". Writing 0.35 into the file jumps at 0.35
+                // and reports the height, so the ladder can be climbed in one sitting.
+                float oneOff = -1f;
+                try
+                {
+                    string body = System.IO.File.ReadAllText(_triggerPath).Trim();
+                    if (body.Length > 0)
+                    {
+                        float parsed;
+                        if (float.TryParse(body, System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out parsed)
+                            && parsed > 0f && parsed < 5f)
+                        {
+                            oneOff = parsed;
+                        }
+                    }
+                }
+                catch (System.Exception) { }
+
                 try { System.IO.File.Delete(_triggerPath); } catch (System.Exception) { }
-                _log.Msg("jump asked for by file rather than by key.");
+                _oneOffForce = oneOff;
+                _log.Msg("jump asked for by file"
+                    + (oneOff > 0f ? " at a one-off force of " + oneOff.ToString("0.000") : "")
+                    + ".");
                 TryJump();
+                _oneOffForce = -1f;
             }
             catch (System.Exception e)
             {
@@ -371,7 +404,7 @@ namespace TldJump
                     _watching = false;
                     float rise = _peakY - _startY;
                     _log.Msg("jump: rose " + rise.ToString("0.00") + "m at a force of "
-                        + _force.Value.ToString("0.000")
+                        + _lastForceUsed.ToString("0.000")
                         + (rise < 0.05f
                             ? ". That is not a jump - raise JumpForce, or turn UseOwnForce on."
                             : "."));
